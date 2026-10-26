@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, session
+from werkzeug.security import generate_password_hash, check_password_hash
 from pymongo import MongoClient
 from dotenv import load_dotenv
 import os
@@ -32,7 +33,7 @@ def signup():
             return render_template('signup.html', error='Email already registered!')
 
         #Save new users to MongoDB
-        users.insert_one({'name': name, 'email': email, 'password': password})
+        users.insert_one({'name': name, 'email': email, 'password': generate_password_hash(password)})
         return redirect('/login')
 
     return render_template('signup.html')
@@ -43,9 +44,10 @@ def login():
         email = request.form['email']
         password = request.form['password']
 
-        user = users.find_one({'email': email, 'password': password})
-        if user:
+        user = users.find_one({'email': email})
+        if user and check_password_hash(user['password'], password):
             session['user'] = user['name']
+            session['email'] = user['email']
             return redirect('/dashboard')
         else:
             return render_template('login.html', error='Wrong email or password!')
@@ -65,15 +67,66 @@ def dashboard():
     response = requests.get(url)
     data = response.json()
 
-    prices = [
-        {'name': 'Bitcoin',  'icon': '₿',  'price': f"{data['bitcoin']['usd']:,}"},
-        {'name': 'Ethereum', 'icon': 'Ξ',  'price': f"{data['ethereum']['usd']:,}"},
-        {'name': 'Solana',   'icon': '◎',  'price': f"{data['solana']['usd']:,}"},
-        {'name': 'BNB',      'icon': '🔶', 'price': f"{data['binancecoin']['usd']:,}"},
-        {'name': 'Cardano',  'icon': '🔵', 'price': f"{data['cardano']['usd']:,}"},
-    ]
+    coin_map = {
+        'bitcoin':     {'name': 'Bitcoin',  'symbol': 'BTC', 'icon': '₿'},
+        'ethereum':    {'name': 'Ethereum', 'symbol': 'ETH', 'icon': 'Ξ'},
+        'solana':      {'name': 'Solana',   'symbol': 'SOL', 'icon': '◎'},
+        'binancecoin': {'name': 'BNB',      'symbol': 'BNB', 'icon': '🔶'},
+        'cardano':     {'name': 'Cardano',  'symbol': 'ADA', 'icon': '🔵'},
+    }
 
-    return render_template('dashboard.html', username=session['user'], prices=prices)
+    prices = [
+        {'name': coin_map[c]['name'], 'symbol': coin_map[c]['symbol'],
+         'icon': coin_map[c]['icon'], 'price': f"{data[c]['usd']:,}"}
+        for c in coin_map
+    ]
+    # Load this user's holdings from MongoDB
+    user_holdings = list(db['holdings'].find({'email': session['email']}))
+    holdings_display = []
+    total_value = 0
+
+    for h in user_holdings:
+        current = data[h['coin']]['usd']
+        value = round(h['amount'] * current, 2)
+        pl = round((current - h['bought_at']) * h['amount'], 2)
+        total_value += value
+        holdings_display.append({
+            'id': str(h['_id']),
+            'coin_name': coin_map[h['coin']]['name'],
+            'amount': h['amount'],
+            'bought_at': h['bought_at'],
+            'current_price': f"{current:,}",
+            'value': f"{value:,}",
+            'pl': pl,
+        })
+
+    return render_template('dashboard.html',
+        username=session['user'],
+        prices=prices,
+        holdings=holdings_display,
+        total_value=f"{round(total_value, 2):,}"
+    )
+
+@app.route('/add_holding', methods=['POST'])
+def add_holding():
+    if 'user' not in session:
+        return redirect('/login')
+    coin = request.form['coin']
+    amount = float(request.form['amount'])
+    bought_at = float(request.form['bought_at'])
+    db['holdings'].insert_one({
+        'email': session['email'],
+        'coin': coin,
+        'amount': amount,
+        'bought_at': bought_at
+    })
+    return redirect('/dashboard')
+
+@app.route('/delete_holding/<id>')
+def delete_holding(id):
+    from bson import ObjectId
+    db['holdings'].delete_one({'_id': ObjectId(id)})
+    return redirect('/dashboard')
 
 @app.route('/logout')
 def logout():

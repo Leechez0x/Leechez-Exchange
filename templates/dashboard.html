@@ -4,21 +4,91 @@
     <h2 style="color: #f7931a; margin-bottom: 0.5rem;">Welcome back, {{ username }}! 👋</h2>
     <p style="color: #8b949e; margin-bottom: 2rem;">Here's your crypto portfolio</p>
 
-    <!-- Live Prices Section -->
-    <div style="margin-bottom: 3rem;">
-        <h3 style="margin-bottom: 1rem; color: #c9d1d9;">📈 Live Prices</h3>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-            {% for coin in prices %}
-            <div style="background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 1.5rem;">
-                <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">{{ coin.icon }}</div>
-                <div style="font-weight: bold; font-size: 1.1rem;">{{ coin.name }}</div>
-                <div style="color: #f7931a; font-size: 1.3rem; margin-top: 0.5rem;">${{ coin.price }}</div>
-            </div>
-            {% endfor %}
-        </div>
+    <!-- Total Portfolio Value -->
+    <div style="background: linear-gradient(135deg, rgba(247,147,26,0.15), rgba(247,147,26,0.04)); border: 1px solid rgba(247,147,26,0.25); border-radius: 14px; padding: 1.5rem 2rem; margin-bottom: 2rem;">
+        <div style="color: #8b949e; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem;">Total Portfolio Value</div>
+        <div style="font-size: 2rem; font-weight: 700; color: #f7931a;">${{ total_value }}</div>
     </div>
 
-    <!-- Logout -->
+    <!-- Live Prices -->
+    <h3 style="margin-bottom: 1rem; color: #c9d1d9;">📈 Live Prices</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1rem; margin-bottom: 3rem;">
+        {% for coin in prices %}
+        <div style="background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 1.25rem;">
+            <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">{{ coin.icon }}</div>
+            <div style="font-weight: bold;">{{ coin.name }}</div>
+            <div style="color: #8b949e; font-size: 0.8rem; margin-bottom: 0.5rem;">{{ coin.symbol }}</div>
+            <div style="color: #f7931a; font-size: 1.2rem; font-weight: 600;">${{ coin.price }}</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Add Holding -->
+    <h3 style="margin-bottom: 1rem; color: #c9d1d9;">💼 My Holdings</h3>
+    <div style="background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
+        <h4 style="margin-bottom: 1rem; color: #8b949e;">➕ Add a Holding</h4>
+        <form method="POST" action="/add_holding" style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
+            <div>
+                <label style="display: block; color: #8b949e; font-size: 0.85rem; margin-bottom: 0.4rem;">Coin</label>
+                <select name="coin" style="padding: 0.7rem 1rem; background: #0d1117; border: 1px solid #30363d; color: white; border-radius: 8px; font-size: 0.95rem;">
+                    <option value="bitcoin">Bitcoin (BTC)</option>
+                    <option value="ethereum">Ethereum (ETH)</option>
+                    <option value="solana">Solana (SOL)</option>
+                    <option value="binancecoin">BNB (BNB)</option>
+                    <option value="cardano">Cardano (ADA)</option>
+                </select>
+            </div>
+            <div>
+                <label style="display: block; color: #8b949e; font-size: 0.85rem; margin-bottom: 0.4rem;">Amount</label>
+                <input type="number" name="amount" step="any" placeholder="0.5" required style="padding: 0.7rem 1rem; background: #0d1117; border: 1px solid #30363d; color: white; border-radius: 8px; font-size: 0.95rem; width: 130px;">
+            </div>
+            <div>
+                <label style="display: block; color: #8b949e; font-size: 0.85rem; margin-bottom: 0.4rem;">Bought At ($)</label>
+                <input type="number" name="bought_at" step="any" placeholder="75000" required style="padding: 0.7rem 1rem; background: #0d1117; border: 1px solid #30363d; color: white; border-radius: 8px; font-size: 0.95rem; width: 140px;">
+            </div>
+            <button type="submit" style="padding: 0.7rem 1.5rem; background: #f7931a; color: #000; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">Add</button>
+        </form>
+    </div>
+
+    <!-- Holdings Table -->
+    {% if holdings %}
+    <div style="background: #161b22; border: 1px solid #30363d; border-radius: 12px; overflow: auto;">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom: 1px solid #30363d;">
+                    <th style="text-align: left; padding: 1rem; color: #8b949e; font-size: 0.8rem; text-transform: uppercase;">Coin</th>
+                    <th style="text-align: left; padding: 1rem; color: #8b949e; font-size: 0.8rem; text-transform: uppercase;">Amount</th>
+                    <th style="text-align: left; padding: 1rem; color: #8b949e; font-size: 0.8rem; text-transform: uppercase;">Bought At</th>
+                    <th style="text-align: left; padding: 1rem; color: #8b949e; font-size: 0.8rem; text-transform: uppercase;">Current</th>
+                    <th style="text-align: left; padding: 1rem; color: #8b949e; font-size: 0.8rem; text-transform: uppercase;">Value</th>
+                    <th style="text-align: left; padding: 1rem; color: #8b949e; font-size: 0.8rem; text-transform: uppercase;">P&L</th>
+                    <th style="padding: 1rem;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for h in holdings %}
+                <tr style="border-bottom: 1px solid #30363d;">
+                    <td style="padding: 1rem; font-weight: 600;">{{ h.coin_name }}</td>
+                    <td style="padding: 1rem;">{{ h.amount }}</td>
+                    <td style="padding: 1rem;">${{ h.bought_at }}</td>
+                    <td style="padding: 1rem; color: #f7931a;">${{ h.current_price }}</td>
+                    <td style="padding: 1rem; font-weight: 600;">${{ h.value }}</td>
+                    <td style="padding: 1rem; color: {{ '#3fb950' if h.pl >= 0 else '#f85149' }};">
+                        {{ '+' if h.pl >= 0 else '' }}${{ h.pl }}
+                    </td>
+                    <td style="padding: 1rem;">
+                        <a href="/delete_holding/{{ h.id }}" style="color: #f85149; font-size: 0.85rem; text-decoration: none;">Delete</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color: #8b949e; text-align: center; padding: 2rem;">No holdings yet. Add your first coin above!</p>
+    {% endif %}
+
+    <br>
     <a href="/logout" style="color: #8b949e; text-decoration: none;">Logout →</a>
 </div>
 {% endblock %}
