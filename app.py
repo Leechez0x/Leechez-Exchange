@@ -1,4 +1,6 @@
 from flask import Flask, render_template, request, redirect, session
+from flask_socketio import SocketIO, emit
+import threading, time
 from werkzeug.security import generate_password_hash, check_password_hash
 from pymongo import MongoClient
 from dotenv import load_dotenv
@@ -8,6 +10,8 @@ load_dotenv
 
 
 app = Flask(__name__)
+socketio = SocketIO(app)
+latest_prices = {}
 app.secret_key = 'leechez_secret_key'
 
 client = MongoClient(os.getenv('MONGO_URI'), tls=True, tlsAllowInvalidCertificates=True)
@@ -62,11 +66,7 @@ def dashboard():
 
     #Fetch livecrypto prices from coingecko API
 
-    import requests
-    url = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,binancecoin,cardano&vs_currencies=usd'
-    response = requests.get(url)
-    data = response.json()
-
+    data = latest_prices
     coin_map = {
         'bitcoin':     {'name': 'Bitcoin',  'symbol': 'BTC', 'icon': '₿'},
         'ethereum':    {'name': 'Ethereum', 'symbol': 'ETH', 'icon': 'Ξ'},
@@ -75,18 +75,31 @@ def dashboard():
         'cardano':     {'name': 'Cardano',  'symbol': 'ADA', 'icon': '🔵'},
     }
 
-    prices = [
-        {'name': coin_map[c]['name'], 'symbol': coin_map[c]['symbol'],
-         'icon': coin_map[c]['icon'], 'price': f"{data[c]['usd']:,}"}
-        for c in coin_map
-    ]
+    prices = []
+    for c in coin_map:
+        try:
+            prices.append({
+                'id': c,
+                'name': coin_map[c]['name'],
+                'symbol': coin_map[c]['symbol'],
+                'icon': coin_map[c]['icon'],
+                'price': f"{data[c]['usd']:,}"
+            })
+        except KeyError:
+            prices.append({
+                'id': c,
+                'name': coin_map[c]['name'],
+                'symbol': coin_map[c]['symbol'],
+                'icon': coin_map[c]['icon'],
+                'price': 'N/A'
+            })
     # Load this user's holdings from MongoDB
     user_holdings = list(db['holdings'].find({'email': session['email']}))
     holdings_display = []
     total_value = 0
 
     for h in user_holdings:
-        current = data[h['coin']]['usd']
+        current = data.get(h['coin'], {}).get('usd', 0)
         value = round(h['amount'] * current, 2)
         pl = round((current - h['bought_at']) * h['amount'], 2)
         total_value += value
@@ -133,5 +146,21 @@ def logout():
     session.clear()
     return redirect('/')
 
+
+def background_prices():
+    global latest_prices          # tells Python we're updating the global variable
+    while True:
+        import requests
+        url = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,binancecoin,cardano&vs_currencies=usd'
+        response = requests.get(url).json()
+        if 'bitcoin' in response:  # only update if API returned valid data
+            latest_prices = response
+        socketio.emit('price_update', latest_prices)
+        time.sleep(5)
+
+thread = threading.Thread(target=background_prices)
+thread.daemon = True
+thread.start()
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    socketio.run(app, debug=True)

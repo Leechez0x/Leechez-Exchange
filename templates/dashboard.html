@@ -18,7 +18,7 @@
             <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">{{ coin.icon }}</div>
             <div style="font-weight: bold;">{{ coin.name }}</div>
             <div style="color: #8b949e; font-size: 0.8rem; margin-bottom: 0.5rem;">{{ coin.symbol }}</div>
-            <div style="color: #f7931a; font-size: 1.2rem; font-weight: 600;">${{ coin.price }}</div>
+            <div id="price-{{ coin.id }}" style="color: #f7931a; font-size: 1.2rem; font-weight: 600;">${{ coin.price }}</div>
         </div>
         {% endfor %}
     </div>
@@ -73,9 +73,8 @@
                     <td style="padding: 1rem;">${{ h.bought_at }}</td>
                     <td style="padding: 1rem; color: #f7931a;">${{ h.current_price }}</td>
                     <td style="padding: 1rem; font-weight: 600;">${{ h.value }}</td>
-                    <td style="padding: 1rem; color: {{ '#3fb950' if h.pl >= 0 else '#f85149' }};">
-                        {{ '+' if h.pl >= 0 else '' }}${{ h.pl }}
-                    </td>
+                    <td style="padding: 1rem; color: {{ '#3fb950' if h.pl >= 0 else '#f85149' }}">
+                        {{ '+' if h.pl >= 0 else '' }}${{ h.pl }}</td>
                     <td style="padding: 1rem;">
                         <a href="/delete_holding/{{ h.id }}" style="color: #f85149; font-size: 0.85rem; text-decoration: none;">Delete</a>
                     </td>
@@ -91,4 +90,20 @@
     <br>
     <a href="/logout" style="color: #8b949e; text-decoration: none;">Logout →</a>
 </div>
+
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+    // Connect to the WebSocket server
+    const socket = io();
+
+    // Listen for 'price_update' events from the server
+    socket.on('price_update', function(data) {
+        // Update each coin price on the page
+        document.getElementById('price-bitcoin').innerText = '$' + data.bitcoin.usd.toLocaleString();
+        document.getElementById('price-ethereum').innerText = '$' + data.ethereum.usd.toLocaleString();
+        document.getElementById('price-solana').innerText = '$' + data.solana.usd.toLocaleString();
+        document.getElementById('price-binancecoin').innerText = '$' + data.binancecoin.usd.toLocaleString();
+        document.getElementById('price-cardano').innerText = '$' + data.cardano.usd.toLocaleString();
+    });
+</script>
 {% endblock %}
