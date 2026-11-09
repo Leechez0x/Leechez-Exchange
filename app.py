@@ -8,6 +8,7 @@ from pymongo import MongoClient
 from dotenv import load_dotenv
 import os
 import requests
+import certifi
 
 load_dotenv()
 
@@ -15,9 +16,9 @@ load_dotenv()
 app = Flask(__name__)
 socketio = SocketIO(app)
 latest_prices = {}
-app.secret_key = 'leechez_secret_key'
+app.secret_key = os.getenv('SECRET_KEY')
 
-client = MongoClient(os.getenv('MONGO_URI'), tls=True, tlsAllowInvalidCertificates=True)
+client = MongoClient(os.getenv('MONGO_URI'), tls=True, tlsCAFile=certifi.where())
 db = client['Leechex_Exchange']
 users = db['users']
 
@@ -174,4 +175,4 @@ thread.daemon = True
 thread.start()
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    socketio.run(app, debug=True, port=5001)
