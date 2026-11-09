@@ -1,5 +1,7 @@
 from flask import Flask, render_template, request, redirect, session
 from flask_socketio import SocketIO, emit
+from bson import ObjectId
+from bson.errors import InvalidId
 import threading, time
 from werkzeug.security import generate_password_hash, check_password_hash
 from pymongo import MongoClient
@@ -135,10 +137,15 @@ def add_holding():
     })
     return redirect('/dashboard')
 
-@app.route('/delete_holding/<id>')
+@app.route('/delete_holding/<id>', methods=['POST'])
 def delete_holding(id):
-    from bson import ObjectId
-    db['holdings'].delete_one({'_id': ObjectId(id)})
+    if 'user' not in session:
+        return redirect('/login')
+    try:
+        holding_id = ObjectId(id)
+    except InvalidId:
+        return redirect('/dashboard')
+    db['holdings'].delete_one({'_id': holding_id, 'email': session['email']})
     return redirect('/dashboard')
 
 @app.route('/logout')

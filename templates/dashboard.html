@@ -76,7 +76,11 @@
                     <td style="padding: 1rem; color: {{ '#3fb950' if h.pl >= 0 else '#f85149' }}">
                         {{ '+' if h.pl >= 0 else '' }}${{ h.pl }}</td>
                     <td style="padding: 1rem;">
-                        <a href="/delete_holding/{{ h.id }}" style="color: #f85149; font-size: 0.85rem; text-decoration: none;">Delete</a>
+                                            <td style="padding: 1rem;">
+                        <form method="POST" action="/delete_holding/{{ h.id }}" style="margin: 0;">
+                            <button type="submit" style="background: none; border: none; color: #f85149; font-size: 0.85rem; cursor: pointer; padding: 0;">Delete</button>
+                        </form>
+                    </td>
                     </td>
                 </tr>
                 {% endfor %}
