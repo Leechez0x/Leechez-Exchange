@@ -7,6 +7,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from pymongo import MongoClient
 from dotenv import load_dotenv
 import os
+import requests
 
 load_dotenv()
 
@@ -156,14 +157,17 @@ def logout():
 
 def background_prices():
     global latest_prices          # tells Python we're updating the global variable
+    url = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,binancecoin,cardano&vs_currencies=usd'
     while True:
-        import requests
-        url = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,binancecoin,cardano&vs_currencies=usd'
-        response = requests.get(url).json()
-        if 'bitcoin' in response:  # only update if API returned valid data
-            latest_prices = response
-        socketio.emit('price_update', latest_prices)
-        time.sleep(5)
+        try:
+            response = requests.get(url, timeout=10)
+            data = response.json()
+            if 'bitcoin' in data:  # only update if API returned valid data
+                latest_prices = data
+                socketio.emit('price_update', latest_prices)
+        except (requests.RequestException, ValueError) as e:
+            print(f'Price fetch failed: {e}')
+        time.sleep(15)
 
 thread = threading.Thread(target=background_prices)
 thread.daemon = True

@@ -99,13 +99,13 @@
     const socket = io();
 
     // Listen for 'price_update' events from the server
-    socket.on('price_update', function(data) {
-        // Update each coin price on the page
-        document.getElementById('price-bitcoin').innerText = '$' + data.bitcoin.usd.toLocaleString();
-        document.getElementById('price-ethereum').innerText = '$' + data.ethereum.usd.toLocaleString();
-        document.getElementById('price-solana').innerText = '$' + data.solana.usd.toLocaleString();
-        document.getElementById('price-binancecoin').innerText = '$' + data.binancecoin.usd.toLocaleString();
-        document.getElementById('price-cardano').innerText = '$' + data.cardano.usd.toLocaleString();
+        socket.on('price_update', function(data) {
+        const coins = ['bitcoin', 'ethereum', 'solana', 'binancecoin', 'cardano'];
+        coins.forEach(function(coin) {
+            if (data[coin] && data[coin].usd !== undefined) {
+                document.getElementById('price-' + coin).innerText = '$' + data[coin].usd.toLocaleString();
+            }
+        });
     });
 </script>
 {% endblock %}
